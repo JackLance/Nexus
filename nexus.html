@@ -137,11 +137,12 @@ function draw(){
     all.forEach(word => { word.forEach(letter => {
 
         ctx.strokeStyle = "#ffffff";
-         if(letter.w == selected.w || letter.p.w == selected.w ){
-            ctx.strokeStyle = "#f4f4ff"
-        }
-         else if(letter == selected || letter.p == selected){
+        if(letter == selected || letter.p == selected){
             ctx.strokeStyle = "#bbbbff"
+        }
+         
+         else if(letter.w == selected.w || letter.p.w == selected.w ){
+            ctx.strokeStyle = "#f4f4ff"
         }
         else return;
         ctx.beginPath();

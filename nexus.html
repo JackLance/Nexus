@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+    <div>
+<canvas id="gameCanvas" width=800 height=800></canvas>
+</div>
+<script>
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+
+canvas = document.getElementById ('gameCanvas' );
+ctx = canvas.getContext ('2d' );
+
+rad = 15;
+balls = [{x: 100, y:100}, {x: 140, y:100}, {x: 180, y:100}, {x: 220, y:100}, {x: 260, y:100}]
+function draw(){
+
+    ctx.fillStyle = "#fcebb6";
+    ctx.fillRect(0, 0, 1000, 1000);
+    balls.forEach(ball => {
+       
+      
+        ctx.strokeStyle = "#462c4b"
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, rad + 1, 0, 2 * Math.PI);
+        ctx.lineWidth = 2;
+         
+        ctx.stroke();
+       
+    });
+}
+
+draw();
+
+</script>
+</html>

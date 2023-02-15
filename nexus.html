@@ -262,6 +262,16 @@ window.onkeydown = e => {
     if(e.key == "Backspace"){
         untype();
     }
+    if(e.key == "ArrowLeft"){
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        draw();
+
+    }
+    if(e.key == "ArrowRight"){
+        if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+        draw();
+
+    }
 }
 
 draw();

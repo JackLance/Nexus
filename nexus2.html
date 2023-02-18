@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en" style = "margin:0">
+<body style = "margin:0">
+    <div style = "margin:0">
+<canvas id="gameCanvas"></canvas>
+</div>
+</body>
+<script>
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+
+
+
+
+
+canvas = document.getElementById ('gameCanvas' );
+ctx = canvas.getContext ('2d' );
+
+
+rad = 10;
+words = [
+{x: 180, y: 150, ans: "anarchy", clue: "What \"A\" means, when in a circle."}, 
+{x: 240, y: 125, ans: "good", clue: "What \"B\" means, on a trancript."}, 
+{x: 300, y: 100, ans: "copyright", clue: "What \"C\" means, when in a circle."}, 
+{x: 360, y: 125, ans: "democrat", clue: "What \"D\" means, in US politics."}, 
+{x: 420, y: 150, ans: "ecstasy", clue: "What \"E\" means, when on the street."}, 
+
+{x: 170, y: 225, ans: "full", clue: "What \"F\" means, when on the road."}, 
+{x: 235, y: 212, ans: "generation", clue: "What \"G\" means, in technology."}, 
+{x: 300, y: 200, ans: "hospital", clue: "What \"H\" means, on a sign."}, 
+{x: 365, y: 212, ans: "jack", clue: "What \"I\" means, when I say it."}, 
+{x: 430, y: 225, ans: "jack", clue: "What \"J\" means, on a card."}, 
+
+{x: 160, y: 300, ans: "kappa", clue: "What \"K\" means, in Greece."}, 
+{x: 230, y: 300, ans: "fifty", clue: "What \"L\" means, in Rome."}, 
+{x: 300, y: 300, ans: "mile", clue: "What \"M\" means, on a map."}, 
+{x: 370, y: 300, ans: "north", clue: "What \"N\" means, on a map."}, 
+{x: 440, y: 300, ans: "hug", clue: "What \"O\" means, on a card."}, 
+
+{x: 170, y: 375, ans: "quiet", clue: "What \"P\" means (in English), to a musician."}, 
+{x: 235, y: 387, ans: "quarter", clue: "What \"Q\" means, when followed by a number."}, 
+{x: 300, y: 400, ans: "restricted", clue: "What \"R\" means, at a theater."}, 
+{x: 365, y: 387, ans: "small", clue: "What \"S\" means, at a store."}, 
+{x: 430, y: 375, ans: "teaspoon", clue: "What \"T\" means, in a recipe."}, 
+
+{x: 180, y: 450, ans: "university", clue: "What \"U\" means, in many acronyms."}, 
+{x: 240, y: 475, ans: "volt", clue: "What \"V\" means, to a scientist."}, 
+{x: 300, y: 500, ans: "tungsten", clue: "What \"W\" means, to a different scientist."}, 
+{x: 360, y: 475, ans: "close", clue: "What \"X\" means, on a window."}, 
+{x: 420, y: 450, ans: "and", clue: "What \"Y\" means, to Spanish speakers."}, 
+
+{x: 300, y: 600, ans: "integers", clue: "What \"Z\" means, to mathematicians."}, 
+
+]
+
+words.forEach(w => {w.sz = w.ans.length; w.x *= 6; w.x -= 700; w.x -= (w.sz+1)*3.5*rad/2})
+
+
+ const complete = new Image();
+ complete.src = "complete.png"
+
+
+lets = {}
+for(i=97; i<=122; i++){
+    lets[String.fromCharCode(i)] = []
+}
+
+all = words.map(w => {
+        var z = new Array(w.sz).fill(1)
+        offset = 0;
+        z.forEach((x, i) => {
+            if(w.ans[i] == " "){
+                offset++;
+                
+
+                return;
+            }
+            z[i-offset] = {x: w.x + i*rad*3, y: w.y, w:z, i:i-offset, a:w.ans[i],}
+            lets[w.ans[i]].push(z[i-offset]);
+        })
+        z.length = z.length-offset
+        z.clue = w.clue
+        z.ang = w.ang
+        return z;
+})
+
+
+
+distance = (a, b, c, d) => {return Math.sqrt((a-c)*(a-c) + (b-d)*(b-d))};
+
+
+
+heuristicdistance = (a, b) => {
+    if(a.w == b.w) return 100000;
+    
+    else return distance(a.x, a.y, b.x, b.y)
+}
+
+function tryrepair(a, b, c, d){
+    if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, c) + heuristicdistance(b, d)){
+        a.p = c;
+        c.p = a;
+        b.p = d;
+        d.p = b;
+        return;
+    }
+    if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, d) + heuristicdistance(b, c)){
+        a.p = d;
+        d.p = a;
+        b.p = c;
+        c.p = b;
+        return;
+    }
+}
+
+for(i=97; i<=122; i++){
+    lest = lets[String.fromCharCode(i)];
+    for(j=0; j<lest.length; j+=2){
+        if(j == lest.length-1){
+            lest[j].p = lest[j];
+            continue;
+        }
+        lest[j].p = lest[j+1]
+        lest[j+1].p = lest[j];
+    }
+
+    for(j = 0; j< 300; j++){
+        for(k=0; k<lest.length; k++){
+            for(l=k+1; l<lest.length; l++){
+                if(lest[k].p == lest[l]) continue;
+                tryrepair(lest[k], lest[k].p, lest[l], lest[l].p)
+            }
+        }
+    }
+
+}
+
+selected = {};
+offset = [0,0]
+
+
+
+drawmore = true;
+
+function draw(){
+    if(!drawmore) return;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,2000,2000)
+
+
+    all.forEach(word => { word.forEach(letter => {
+        ctx.strokeStyle = "#ffffff";
+        if(letter == selected || letter.p == selected){
+            ctx.strokeStyle = "#bbbbff"
+        }
+         
+         else if(letter.w == selected.w || letter.p.w == selected.w ){
+            ctx.strokeStyle = "#f4f4ff"
+        }
+        else return;
+     
+        ctx.beginPath();
+        ctx.moveTo(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1])); 
+        ctx.lineTo(camerazoom * (letter.p.x+camera[0]), camerazoom * (letter.p.y+camera[1])); 
+        ctx.stroke();
+    })})
+
+    all.forEach(word => { word.forEach(letter => {
+       
+      
+        ctx.strokeStyle = "#00ff00"
+        if(word == selected.w){
+            ctx.strokeStyle = "#008800"
+        }
+        if(letter == selected){
+            ctx.strokeStyle = "#ff0000"
+        }
+    
+        ctx.beginPath();
+        ctx.arc(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1]), camerazoom * (rad + 1), 0, 2 * Math.PI);
+        ctx.lineWidth = camerazoom * 2;
+         
+        ctx.stroke();
+
+        if(letter.l){
+            ctx.font = "bold " + camerazoom * 15 + "px monospace";
+
+            ctx.fillStyle = "#333333"
+            ctx.fillText(letter.l, camerazoom *(letter.x-rad/4+camera[0]), camerazoom * (letter.y+rad/4+camera[1]))
+        }
+
+        if(letter == selected){
+
+        }
+            ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,2000,50)
+                ctx.fillStyle = "#115511";
+    ctx.fillRect(0,47,2000,3)
+
+        ctx.fillStyle = "#115511";
+            ctx.font = "bold 25px monospace";
+
+            if(selected.w) {
+                ctx.fillText(selected.w.clue, 5, 30)
+            }
+
+
+
+       
+    })});
+
+
+    checkwin();
+
+}
+
+
+function getPixel(img, x, y) {
+    return [1,1,1,x > 0 && y > 0 && x < img.width && y < img.height];
+    let canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.getContext('2d').drawImage(img, x, y, 1, 1, 0, 0, 1, 1);;
+    let pixelData = canvas.getContext('2d').getImageData(0, 0, 1, 1).data;
+    console.log(pixelData)
+    return pixelData;   
+}
+
+function checkwin(){
+    won = true;
+    all.forEach(word => {
+        word.forEach(letter => {
+            if(!letter.l || letter.l != letter.a) won = false;
+        })
+    })
+    if(won) win();
+}
+
+function win(){
+    ctx.drawImage(complete, 0, 0);
+    drawmore = false;
+}
+
+
+canvas.onclick = e=>{
+    clickx = (e.offsetX / camerazoom) - camera[0];
+    clicky = (e.offsetY / camerazoom) - camera[1];
+
+    closest = {x:-1, y:-1}
+  all.forEach(word => { word.forEach(letter => {
+    if(closest.x == -1 || distance(clickx, clicky, letter.x, letter.y) < distance(clickx, clicky, closest.x, closest.y)){
+        closest = letter
+    }
+  })})
+  selected = closest;
+  draw();
+}
+
+function type(key){
+    selected.l = key;
+    selected.p.l = key;
+    if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+    draw();
+}
+
+function untype(){
+    if(selected.l){
+        selected.l = undefined;
+        selected.p.l = undefined;
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+    }
+    else{
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        selected.l = undefined;
+        selected.p.l = undefined;
+    }
+    draw();
+    
+}
+
+camerazoom = 1;
+camera = [0,0]
+mousedown = false;
+
+window.onwheel = e => {
+    if(e.deltaY > 0){
+        camerazoom += .1;
+    }else{
+        camerazoom -= .1;
+    }
+    if(camerazoom < .2){
+        camerazoom = .2;
+    }
+    if(camerazoom > 5){
+        camerazoom = 5;
+    }
+        draw();
+
+}
+
+window.onmousemove = e => {
+    if(mousedown){
+        camera[0] += (e.offsetX - mousedown[0])/camerazoom;
+        camera[1] += (e.offsetY - mousedown[1])/camerazoom;
+            mousedown = [e.offsetX, e.offsetY]
+
+    }
+    draw();
+}
+
+window.onmousedown = e => {
+    
+    mousedown = [e.offsetX, e.offsetY];}
+
+window.onmouseup = e => {
+    mousedown = false;
+}
+
+
+window.onkeydown = e => {
+    console.log(e.key)
+    if(e.key.length == 1 && e.key >= 'a' && e.key <= 'z') {
+        type(e.key)
+    }
+    if(e.key.length == 1 &&e.key >= 'A' && e.key <= 'Z') {
+        type(e.key.toLowerCase())
+    }
+    if(e.key == "Backspace"){
+        untype();
+    }
+    if(e.key == "ArrowLeft"){
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        draw();
+
+    }
+    if(e.key == "ArrowRight"){
+        if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+        draw();
+
+    }
+}
+
+   function resize(){
+        canvas.height  = window.innerHeight - 10 ;
+   
+         canvas.width  = window.innerWidth   - 10;
+        draw()
+  }
+
+   resize()
+
+    window.addEventListener('resize', resize);
+
+
+</script>
+</html>

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en" style = "margin:0">
+<body style = "margin:0">
+    <div style = "margin:0">
+<canvas id="gameCanvas"></canvas>
+</div>
+</body>
+<script>
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+
+canvas = document.getElementById ('gameCanvas' );
+ctx = canvas.getContext ('2d' );
+
+rad = 15;
+words = [
+{ang: 1, x: 100, y:100, ans: "it is better to be divided by truth than to be united in error", clue: "A quote"}, 
+]
+
+words.forEach(w => {w.sz = w.ans.length; })
+
+
+ const complete = new Image();
+ complete.src = "complete.png"
+
+
+lets = {}
+for(i=97; i<=122; i++){
+    lets[String.fromCharCode(i)] = []
+}
+
+all = words.map(w => {
+        var z = new Array(w.sz).fill(1)
+        offset = 0;
+        dx = 0;
+        dy = 0;
+        z.forEach((x, i) => {
+            if(w.ans[i] == " "){
+                dx = 0;
+                dy += 4*rad
+                offset++;
+                
+
+                return;
+            }
+            z[i-offset] = {x: dx+300, y: dy+300, w:z, i:i-offset, a:w.ans[i],}
+            dx += rad*3
+            if(dx > 60 * rad){
+                //dy += 6 * rad
+                //dx = 0;
+            }
+            lets[w.ans[i]].push(z[i-offset]);
+        })
+        z.length = z.length-offset
+        z.clue = w.clue
+        z.ang = w.ang
+        return z;
+})
+
+
+
+distance = (a, b, c, d) => {return Math.sqrt((a-c)*(a-c) + (b-d)*(b-d))};
+
+
+
+heuristicdistance = (a, b) => {
+    if(a.w == b.w) return 100000;
+    val = (a.w.ang - b.w.ang + 7)%7;
+    val = Math.min(val, 7-val)
+    if(val > 1) val += 1000000;
+    return val;
+    //else return distance(a.x, a.y, b.x, b.y)
+}
+
+function tryrepair(a, b, c, d){
+    if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, c) + heuristicdistance(b, d)){
+        a.p = c;
+        c.p = a;
+        b.p = d;
+        d.p = b;
+        return;
+    }
+    if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, d) + heuristicdistance(b, c)){
+        a.p = d;
+        d.p = a;
+        b.p = c;
+        c.p = b;
+        return;
+    }
+}
+
+for(i=97; i<=122; i++){
+    lest = lets[String.fromCharCode(i)];
+    for(j=0; j<lest.length; j+=2){
+        if(lest.length == 1) {
+            lest[j].p = [lest[j]]
+            continue;
+        }
+        if(j == lest.length-3){
+            lest[j].p = [lest[j+1], lest[j+2]];
+            lest[j+1].p = [lest[j], lest[j+2]];
+            lest[j+2].p = [lest[j+1], lest[j]];
+            j+=3;
+            continue;
+        }
+        lest[j].p = [lest[j+1]]
+        lest[j+1].p = [lest[j]];
+
+    }
+    if(lest == lets['t']){
+        lest[0].p = [lest[3]]
+        lest[3].p = [lest[0]]
+        lest[1].p = [lest[2]]
+        lest[2].p = [lest[1]]
+    }
+
+    /*for(j = 0; j< 300; j++){
+        for(k=0; k<lest.length; k++){
+            for(l=k+1; l<lest.length; l++){
+                if(lest[k].p == lest[l]) continue;
+                tryrepair(lest[k], lest[k].p, lest[l], lest[l].p)
+            }
+        }
+    }*/
+
+}
+
+selected = {p:[]};
+offset = [0,0]
+
+camerazoom = 1;
+camera = [0,0]
+mousedown = false;
+
+
+drawmore = true;
+
+function draw(){
+    if(!drawmore) return;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,4000,4000)
+
+
+    all.forEach(word => { word.forEach(letter => {
+        
+     
+        for(p of letter.p){
+            ctx.strokeStyle = "#f4f4ff"
+            if(letter == selected || p == selected){
+                ctx.strokeStyle = "#bbbbff"
+            }        
+       
+            ctx.beginPath();
+            ctx.moveTo(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1])); 
+            ctx.lineTo(camerazoom * (p.x+camera[0]), camerazoom * (p.y+camera[1])); 
+            ctx.stroke();
+        }
+    })})
+
+    for(p of selected.p){
+            
+                ctx.strokeStyle = "#bbbbff"
+                    
+       
+            ctx.beginPath();
+            ctx.moveTo(camerazoom * (selected.x+camera[0]), camerazoom * (selected.y+camera[1])); 
+            ctx.lineTo(camerazoom * (p.x+camera[0]), camerazoom * (p.y+camera[1])); 
+            ctx.stroke();
+        }
+
+    all.forEach(word => { word.forEach(letter => {
+       
+      
+        ctx.strokeStyle = "#00ff00"
+        if(word == selected.w){
+            ctx.strokeStyle = "#00ff00"
+        }
+        if(selected.p.includes(letter)){
+            ctx.strokeStyle = "#ff8888"
+        }
+        if(letter == selected){
+            ctx.strokeStyle = "#ff0000"
+        }
+    
+        ctx.beginPath();
+        ctx.arc(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1]), camerazoom * (rad + 1), 0, 2 * Math.PI);
+        ctx.lineWidth = camerazoom * 2;
+         
+        ctx.stroke();
+
+        if(letter.l){
+            ctx.font = "bold " + camerazoom * 15 + "px monospace";
+
+            ctx.fillStyle = "#333333"
+            ctx.fillText(letter.l, camerazoom *(letter.x-rad/4+camera[0]), camerazoom * (letter.y+rad/4+camera[1]))
+        }
+
+        if(letter == selected){
+
+        }
+            ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,4000,50)
+                ctx.fillStyle = "#115511";
+    ctx.fillRect(0,47,4000,3)
+
+        ctx.fillStyle = "#115511";
+            ctx.font = "bold 25px monospace";
+
+            if(selected.w) {
+                ctx.fillText(selected.w.clue, 5, 30)
+            }
+
+
+
+       
+    })});
+
+
+    checkwin();
+
+}
+
+
+function getPixel(img, x, y) {
+    return [1,1,1,x > 0 && y > 0 && x < img.width && y < img.height];
+    let canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.getContext('2d').drawImage(img, x, y, 1, 1, 0, 0, 1, 1);;
+    let pixelData = canvas.getContext('2d').getImageData(0, 0, 1, 1).data;
+    console.log(pixelData)
+    return pixelData;   
+}
+
+function checkwin(){
+    won = true;
+    all.forEach(word => {
+        word.forEach(letter => {
+            if(!letter.l || letter.l != letter.a) won = false;
+        })
+    })
+    if(won) win();
+}
+
+function win(){
+    ctx.drawImage(complete, 0, 0);
+    drawmore = false;
+}
+
+
+canvas.onclick = e=>{
+    clickx = (e.offsetX / camerazoom) - camera[0];
+    clicky = (e.offsetY / camerazoom) - camera[1];
+
+    closest = {x:-1, y:-1}
+  all.forEach(word => { word.forEach(letter => {
+    if(closest.x == -1 || distance(clickx, clicky, letter.x, letter.y) < distance(clickx, clicky, closest.x, closest.y)){
+        closest = letter
+    }
+  })})
+  selected = closest;
+  draw();
+}
+
+function type(key){
+    selected.l = key;
+    for(p of selected.p) p.l = key;
+    if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+    draw();
+}
+
+function untype(){
+    if(selected.l){
+        selected.l = undefined;
+        for(p of selected.p) p.l = undefined;
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+    }
+    else{
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        selected.l = undefined;
+        for(p of selected.p) p.l = undefined;
+    }
+    draw();
+    
+}
+
+window.onwheel = e => {
+    if(e.deltaY < 0){
+        camerazoom += .1;
+    }else{
+        camerazoom -= .1;
+    }
+    if(camerazoom < .2){
+        camerazoom = .2;
+    }
+    if(camerazoom > 5){
+        camerazoom = 5;
+    }
+        draw();
+
+}
+
+window.onmousemove = e => {
+    if(mousedown){
+        camera[0] += (e.offsetX - mousedown[0])/camerazoom;
+        camera[1] += (e.offsetY - mousedown[1])/camerazoom;
+            mousedown = [e.offsetX, e.offsetY]
+
+    }
+    draw();
+}
+
+window.onmousedown = e => {
+    
+    mousedown = [e.offsetX, e.offsetY];}
+
+window.onmouseup = e => {
+    mousedown = false;
+}
+
+window.onkeydown = e => {
+    console.log(e.key)
+    if(e.key.length == 1 && e.key >= 'a' && e.key <= 'z') {
+        type(e.key)
+    }
+    if(e.key.length == 1 &&e.key >= 'A' && e.key <= 'Z') {
+        type(e.key.toLowerCase())
+    }
+    if(e.key == "Backspace"){
+        untype();
+    }
+    if(e.key == "ArrowLeft"){
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        draw();
+
+    }
+    if(e.key == "ArrowRight"){
+        if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+        draw();
+
+    }
+}
+
+draw();
+
+   function resize(){
+        canvas.height  = window.innerHeight - 10 ;
+   
+         canvas.width  = window.innerWidth   - 10;
+        draw()
+  }
+
+   resize()
+
+    window.addEventListener('resize', resize);
+
+</script>
+</html>

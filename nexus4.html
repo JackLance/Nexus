@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en" style = "margin:0">
+<body style = "margin:0">
+    <div style = "margin:0">
+<canvas id="gameCanvas"></canvas>
+</div>
+</body>
+<script>
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+
+
+
+
+
+canvas = document.getElementById ('gameCanvas' );
+ctx = canvas.getContext ('2d' );
+
+
+rad = 10;
+words = [
+{x: 200, y: 0, ans: "first", u:"11111", clue: "Position you'd have to come in to stand on the top of a podium, and a sensical word to begin this puzzle with."}, 
+{x: 200, y: 100, ans: "first class", u:"11111 22223", clue: "Place you may find comfortable seats, all facing the same direction."}, 
+{x: 200, y: 200, ans: "classroom", u:"222233323", clue: "Place you may find uncomfortable seats, all facing the same direction."}, 
+{x: 200, y: 300, ans: "room service", u:"3323 4444441", clue: "?"}, 
+{x: 200, y: 400, ans: "service dog", u:"4444441 444", clue: "You're usually not supposed to pet them."}, 
+
+{x: 200, y: 500, ans: "dog house", u:"444 55555", clue: "?"}, 
+{x: 200, y: 600, ans: "house party", u:"55555 55555", clue: "?"}, 
+{x: 200, y: 700, ans: "party game", u:"55555 6666", clue: "Some examples are Most Likely, Flip Cup, and Never Have I Ever."}, 
+{x: 200, y: 800, ans: "game set match", u:"6666 777 88888", clue: "The umpire usually says this when announcing the winner, in Tennis."}, 
+{x: 150, y: 900, ans: "drum set", u:"7777 777", clue: "Good present to give to the kids of your enemies."}, 
+
+{x: 250, y: 900, ans: "matchstick", u:"8888866666", clue: "Object generally not removed from the box it came in until it's ready to be used."}, 
+{x: 200, y: 1000, ans: "drumstick", u:"777766666", clue: "Food named after another food, named after an object it barely even looks like."}, 
+{x: 200, y: 1100, ans: "stickshift", u:"6666699999", clue: "Type of car some countries require a separate license for."}, 
+{x: 200, y: 1200, ans: "shift key", u:"99999 999", clue: "?"}, 
+{x: 200, y: 1300, ans: "key lime pie", u:"999 0000 !!!", clue: "Special flavor of Twizzlers, opposite the color wheel from the standard color."}, 
+{x: 150, y: 1400, ans: "lime green", u:"0000 @@@3@", clue: "?"}, 
+{x: 250, y: 1400, ans: "apple pie", u:"##$## !!!", clue: "?"}, 
+{x: 200, y: 1500, ans: "green apple", u:"@@@3@ ##$##", clue: "Special flavor of Twizzlers, opposite the color wheel from the standard color."}, 
+{x: 200, y: 1600, ans: "apple watch", u:"##$## $$$$$", clue: "Device that has a small knob on the side, but it can't actually be used to set the time."}, 
+{x: 200, y: 1700, ans: "watch your step", u:"$$$$$ aaaa bbbb", clue: "This might be said to a kid running up the stairs."}, 
+{x: 130, y: 1800, ans: "your other right", u:"aaaa ccccc ddddd", clue: "This might be said to a kid putting on their shoes."}, 
+{x: 270, y: 1800, ans: "step right up", u:"bbbb ddddd ee", clue: "This might be said to a kid at a carnival."}, 
+{x: 80, y: 1900, ans: "otherwise", u:"cccccffff", clue: "There's a board game, like Balderdash but for sayings, called \"Wise and [this adjective]\"."}, 
+{x: 200, y: 1900, ans: "right hand men", u:"ddddd gggg hhh", clue: "A (plural) noun phrase, which you might accurately describe as \"dextronormative\"."}, 
+{x: 320, y: 1900, ans: "shake up", u:"iiiii ee", clue: "What you should do to a container of salad dressing before using."}, 
+{x: 120, y: 2000, ans: "three wise men", u:"jjjjj ffff hhh", clue: "?"}, 
+{x: 280, y: 2000, ans: "secret handshake", u:"kkkkkk ggggiiiii", clue: "?"}, 
+{x: 160, y: 2100, ans: "top three", u:"lll jjjjj", clue: "Positions you'd have to come in to stand on a podium."}, 
+{x: 240, y: 2100, ans: "top secret", u:"lll kkkkkk", clue: "Something sometimes written on manila envelopes in spy movies."}, 
+{x: 200, y: 2200, ans: "top", u:"lll", clue: "(You should start from the bottom of this riddle and work your way up here.)"}, 
+
+]
+
+words.forEach(w => {w.sz = w.ans.length; w.x *= 6; w.x -= 700; w.x -= (w.sz+1)*3.5*rad/2; w.y = 400-w.y;}  )
+
+
+ const complete = new Image();
+ complete.src = "complete.png"
+
+
+lets = {}
+for(i=97; i<=122; i++){
+    lets[String.fromCharCode(i)] = []
+}
+
+all = words.map(w => {
+        var z = new Array(w.sz).fill(1)
+        offset = 0;
+        z.forEach((x, i) => {
+            if(w.ans[i] == " "){
+                offset++;
+                
+
+                return;
+            }
+            z[i-offset] = {x: w.x + i*rad*3, y: w.y, w:z, i:i-offset, a:w.ans[i], b:w.u[i], p:[]}
+            lets[w.ans[i]].push(z[i-offset]);
+        })
+        z.length = z.length-offset
+        z.clue = w.clue
+        z.x = w.x
+        z.ang = w.ang
+        return z;
+})
+
+
+
+distance = (a, b, c, d) => {return Math.sqrt((a-c)*(a-c) + (b-d)*(b-d))};
+
+
+
+heuristicdistance = (a, b) => {
+    if(Math.abs(a.w.y - b.w.y)==100) return 0;
+    
+    else return 1
+}
+
+function tryrepair(a, b, c, d){
+      if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, c) + heuristicdistance(b, d)){
+        a.p = c;
+        c.p = a;
+        b.p = d;
+        d.p = b;
+        return;
+    }
+    if(heuristicdistance(a, b) + heuristicdistance(c, d) > heuristicdistance(a, d) + heuristicdistance(b, c)){
+        a.p = d;
+        d.p = a;
+        b.p = c;
+        c.p = b;
+        return;
+    }
+   
+}
+
+for(i=97; i<=122; i++){
+    lest = lets[String.fromCharCode(i)];
+    for(j of lest){
+        for(k of lest){
+
+            if((k != j) && k.ans == j.ans && k.b == j.b){
+               k.p.push(j)
+               j.p.push(k)
+            }
+        }
+    }
+
+   
+
+}
+
+selected = {p:[]};
+offset = [0,0]
+
+
+
+drawmore = true;
+
+function draw(){
+    if(!drawmore) return;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,4000,4000)
+
+
+    all.forEach(word => { word.forEach(letter => {
+        for(p of letter.p){
+            ctx.strokeStyle = "#f4f4ff"
+            if(letter == selected || p == selected){
+                ctx.strokeStyle = "#bbbbff"
+            }        
+            if(Math.abs(p.y - letter.y) != 100) continue;
+            ctx.beginPath();
+            ctx.moveTo(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1])); 
+            ctx.lineTo(camerazoom * (p.x+camera[0]), camerazoom * (p.y+camera[1])); 
+            ctx.stroke();
+        }
+    })})
+
+    all.forEach(word => { word.forEach(letter => {
+       
+      
+        ctx.strokeStyle = "#00ff00"
+        if(word == selected.w){
+            ctx.strokeStyle = "#008800"
+        }
+         if(selected.p.includes(letter)){
+            ctx.strokeStyle = "#ff8888"
+        }
+        if(letter == selected){
+            ctx.strokeStyle = "#ff0000"
+        }
+    
+        ctx.beginPath();
+        ctx.arc(camerazoom * (letter.x+camera[0]), camerazoom * (letter.y+camera[1]), camerazoom * (rad + 1), 0, 2 * Math.PI);
+        ctx.lineWidth = camerazoom * 2;
+         
+        ctx.stroke();
+
+        if(letter.l){
+            ctx.font = "bold " + camerazoom * 15 + "px monospace";
+
+            ctx.fillStyle = "#333333"
+            ctx.fillText(letter.l, camerazoom *(letter.x-rad/4+camera[0]), camerazoom * (letter.y+rad/4+camera[1]))
+        }
+
+        if(letter == selected){
+
+        }
+            ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0,0,4000,50)
+                ctx.fillStyle = "#115511";
+    ctx.fillRect(0,47,4000,3)
+
+        ctx.fillStyle = "#115511";
+            ctx.font = "bold 25px monospace";
+
+            if(selected.w) {
+                ctx.fillText(selected.w.clue, 5, 30)
+            }
+
+
+
+       
+    })});
+
+
+    checkwin();
+
+}
+
+
+function getPixel(img, x, y) {
+    return [1,1,1,x > 0 && y > 0 && x < img.width && y < img.height];
+    let canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.getContext('2d').drawImage(img, x, y, 1, 1, 0, 0, 1, 1);;
+    let pixelData = canvas.getContext('2d').getImageData(0, 0, 1, 1).data;
+    console.log(pixelData)
+    return pixelData;   
+}
+
+function checkwin(){
+    won = true;
+    all.forEach(word => {
+        word.forEach(letter => {
+            if(!letter.l || letter.l != letter.a) won = false;
+        })
+    })
+    if(won) win();
+}
+
+function win(){
+    ctx.drawImage(complete, 0, 0);
+    drawmore = false;
+}
+
+
+canvas.onclick = e=>{
+    clickx = (e.offsetX / camerazoom) - camera[0];
+    clicky = (e.offsetY / camerazoom) - camera[1];
+
+    closest = {x:-1, y:-1}
+  all.forEach(word => { word.forEach(letter => {
+    if(closest.x == -1 || distance(clickx, clicky, letter.x, letter.y) < distance(clickx, clicky, closest.x, closest.y)){
+        closest = letter
+    }
+  })})
+  selected = closest;
+  draw();
+}
+
+function type(key){
+    selected.l = key;
+        for(p of selected.p) p.l = key;
+
+    if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+    draw();
+}
+
+function untype(){
+    if(selected.l){
+        selected.l = undefined;
+        for(p of selected.p) p.l = undefined;
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+    }
+    else{
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        selected.l = undefined;
+        for(p of selected.p) p.l = undefined;
+    }
+    draw();
+    
+}
+
+camerazoom = 0.3;
+camera = [1500,2200]
+mousedown = false;
+
+window.onwheel = e => {
+    if(e.deltaY < 0){
+        camerazoom += .1;
+    }else{
+        camerazoom -= .1;
+    }
+    if(camerazoom < .2){
+        camerazoom = .2;
+    }
+    if(camerazoom > 5){
+        camerazoom = 5;
+    }
+        draw();
+
+}
+
+window.onmousemove = e => {
+    if(mousedown){
+        camera[0] += (e.offsetX - mousedown[0])/camerazoom;
+        camera[1] += (e.offsetY - mousedown[1])/camerazoom;
+            mousedown = [e.offsetX, e.offsetY]
+
+    }
+    draw();
+}
+
+window.onmousedown = e => {
+    
+    mousedown = [e.offsetX, e.offsetY];}
+
+window.onmouseup = e => {
+    mousedown = false;
+}
+
+
+window.onkeydown = e => {
+    console.log(e.key)
+    if(e.key.length == 1 && e.key >= 'a' && e.key <= 'z') {
+        type(e.key)
+    }
+    if(e.key.length == 1 &&e.key >= 'A' && e.key <= 'Z') {
+        type(e.key.toLowerCase())
+    }
+    if(e.key == "Backspace"){
+        untype();
+    }
+    if(e.key == "ArrowLeft"){
+        if(selected.w[selected.i-1]) selected = selected.w[selected.i-1]
+        draw();
+
+    }
+    if(e.key == "ArrowRight"){
+        if(selected.w[selected.i+1]) selected = selected.w[selected.i+1]
+        draw();
+
+    }
+}
+
+   function resize(){
+        canvas.height  = window.innerHeight - 10 ;
+   
+         canvas.width  = window.innerWidth   - 10;
+        draw()
+  }
+
+   resize()
+
+    window.addEventListener('resize', resize);
+
+
+</script>
+</html>
